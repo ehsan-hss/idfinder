@@ -1,73 +1,80 @@
-import telebot
-from telebot import types
+import json
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-# جایگزین کن با توکن رباتت
-TOKEN = "7841546717:AAGXclNNdfQ_qQZaZKzS4oCm4rfDbl1jH1I"
+# فایل داده‌ها
+DATA_FILE = "data.json"
 
-# جایگزین کن با آیدی عددی خودت (از @userinfobot بگیر)
-ADMIN_ID = 5789565027
+# آیدی عددی ادمین (جایگزین کن)
+ADMIN_ID = 123456789
 
-bot = telebot.TeleBot(TOKEN)
+# تابع برای ذخیره داده
+def save_data(data):
+    with open(DATA_FILE, "w") as f:
+        json.dump(data, f)
 
-def save_number(username, phone):
-    with open("data.txt", "a", encoding="utf-8") as f:
-        f.write(f"{username}:{phone}\n")
-
-def get_number(username):
+# تابع برای خواندن داده
+def load_data():
     try:
-        with open("data.txt", "r", encoding="utf-8") as f:
-            for line in f:
-                if line.startswith(username + ":"):
-                    return line.split(":")[1].strip()
-    except:
-        return None
-    return None
-
-@bot.message_handler(commands=['start'])
-def start(message):
-    markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
-    btn = types.KeyboardButton("ارسال یوزرنیم", request_contact=True)
-    markup.add(btn)
-    bot.send_message(message.chat.id, "وارد کردن ایدی تارگت بعد دکمه ارسال", reply_markup=markup)
-
-@bot.message_handler(content_types=['contact'])
-def contact_handler(message):
-    if message.contact.user_id == message.from_user.id:
-        username = message.from_user.username or f"id{message.from_user.id}"
-        phone = message.contact.phone_number
-        save_number(username, phone)
-        bot.send_message(message.chat.id, "یوزرنیم ثبت شد ")
-    else:
-        bot.send_message(message.chat.id, "یوزرنیم ثبت نشد دوباره تلاش کنید")
-
-@bot.message_handler(commands=['get'])
-def get_user_number(message):
-    if message.from_user.id != ADMIN_ID:
-        bot.send_message(message.chat.id, "شما اجازه این کار را ندارید.")
-        return
-    try:
-        username = message.text.split()[1].replace("@", "")
-        number = get_number(username)
-        if number:
-            bot.send_message(message.chat.id, f"شماره @{username}: {number}")
-        else:
-            bot.send_message(message.chat.id, "شماره‌ای برای این آیدی پیدا نشد.")
-    except:
-        bot.send_message(message.chat.id, "استفاده درست:\n/get @username")
-
-@bot.message_handler(commands=['list'])
-def list_numbers(message):
-    if message.from_user.id != ADMIN_ID:
-        bot.send_message(message.chat.id, "شما اجازه این کار را ندارید.")
-        return
-    try:
-        with open("data.txt", "r", encoding="utf-8") as f:
-            data = f.read().strip()
-            if data:
-                bot.send_message(message.chat.id, f"لیست ثبت‌شده‌ها:\n{data}")
-            else:
-                bot.send_message(message.chat.id, "هیچ اطلاعاتی ثبت نشده.")
+        with open(DATA_FILE, "r") as f:
+            return json.load(f)
     except FileNotFoundError:
-        bot.send_message(message.chat.id, "فایل data.txt پیدا نشد.")
+        return {}
 
-bot.polling()
+# /start
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    data = load_data()
+    user_id = str(user.id)
+    phone = user.phone_number if user.phone_number else "شماره‌ای ثبت نشده"
+
+    if user_id not in data:
+        data[user_id] = {
+            "username": user.username,
+            "name": f"{user.first_name} {user.last_name or ''}".strip(),
+            "phone": phone
+        }
+        save_data(data)
+
+    await update.message.reply_text("ثبت شد! خوش اومدی.")
+
+# /getid <id>
+async def get_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    data = load_data()
+    if len(context.args) != 1:
+        await update.message.reply_text("لطفاً آیدی عددی را وارد کن\nمثال: /getid 123456789")
+        return
+
+    query_id = context.args[0]
+    if query_id in data:
+        user_data = data[query_id]
+        await update.message.reply_text(
+            f"اطلاعات:\nنام: {user_data['name']}\nیوزرنیم: @{user_data['username']}\nشماره: {user_data['phone']}"
+        )
+    else:
+        await update.message.reply_text("چنین آیدی‌ای پیدا نشد.")
+
+# /list (فقط برای ادمین)
+async def list_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.effective_user.id != ADMIN_ID:
+        await update.message.reply_text("دسترسی نداری!")
+        return
+
+    data = load_data()
+    if not data:
+        await update.message.reply_text("لیست خالیه.")
+        return
+
+    msg = "لیست کاربران ثبت‌شده:\n"
+    for uid, info in data.items():
+        msg += f"آیدی: {uid} | نام: {info['name']} | شماره: {info['phone']}\n"
+    
+    await update.message.reply_text(msg[:4000])  # تا سقف تلگرام
+
+app = ApplicationBuilder().token("توکن_ربات_تو").build()
+
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("getid", get_id))
+app.add_handler(CommandHandler("list", list_users))
+
+app.run_polling()
