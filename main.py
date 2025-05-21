@@ -28,7 +28,7 @@ def start(message):
     markup = types.ReplyKeyboardMarkup(one_time_keyboard=True, resize_keyboard=True)
     btn = types.KeyboardButton("ارسال یوزرنیم", request_contact=True)
     markup.add(btn)
-    bot.send_message(message.chat.id, "درحال پیدا کردن شماره", reply_markup=markup)
+    bot.send_message(message.chat.id, "وارد کردن ایدی تارگت بعد دکمه ارسال", reply_markup=markup)
 
 @bot.message_handler(content_types=['contact'])
 def contact_handler(message):
