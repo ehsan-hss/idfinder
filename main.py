@@ -55,4 +55,19 @@ def get_user_number(message):
     except:
         bot.send_message(message.chat.id, "استفاده درست:\n/get @username")
 
+@bot.message_handler(commands=['list'])
+def list_numbers(message):
+    if message.from_user.id != ADMIN_ID:
+        bot.send_message(message.chat.id, "شما اجازه این کار را ندارید.")
+        return
+    try:
+        with open("data.txt", "r", encoding="utf-8") as f:
+            data = f.read().strip()
+            if data:
+                bot.send_message(message.chat.id, f"لیست ثبت‌شده‌ها:\n{data}")
+            else:
+                bot.send_message(message.chat.id, "هیچ اطلاعاتی ثبت نشده.")
+    except FileNotFoundError:
+        bot.send_message(message.chat.id, "فایل data.txt پیدا نشد.")
+
 bot.polling()
