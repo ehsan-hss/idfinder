@@ -6,7 +6,7 @@ from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 DATA_FILE = "data.json"
 
 # آیدی عددی ادمین (جایگزین کن)
-ADMIN_ID = 123456789
+ADMIN_ID = 5789565027
 
 # تابع برای ذخیره داده
 def save_data(data):
@@ -71,7 +71,7 @@ async def list_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await update.message.reply_text(msg[:4000])  # تا سقف تلگرام
 
-app = ApplicationBuilder().token("توکن_ربات_تو").build()
+app = ApplicationBuilder().token("7841546717:AAGXclNNdfQ_qQZaZKzS4oCm4rfDbl1jH1I").build()
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("getid", get_id))
